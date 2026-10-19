@@ -1,0 +1,9 @@
+Invoice No,Full Name,Company,Issued,Item,Qty,Unit Price,Amount,Status,VIP,Data Note
+INV-1001,Priya Nair,Lotus Lane Bakery,2026-03-05,Menu design,1,18500,18500,paid,TRUE,Demo data (fictional)
+INV-1002,Arjun Mehta,Copperleaf Tea House,2026-03-07,Logo refresh,1,24000,24000,unpaid,FALSE,Demo data (fictional)
+INV-1003,Elena Rossi,Quiet Harbour Books,2026-03-11,Catalogue layout,3,7500,22500,paid,FALSE,Demo data (fictional)
+INV-1004,Wei Zhang,Bright Path Tutors,2026-03-14,Course workbook,2,617283.75,1234567.5,paid,TRUE,Demo data (fictional)
+INV-1005,Grace Okafor,Green Thread Tailors,2026-03-18,Price list update,1,9000,,unpaid,FALSE,Demo data (fictional)
+INV-1006,Omar Haddad,Cedar Step Yoga,2026-03-21,Flyer set,4,3250,13000,paid,FALSE,Demo data (fictional)
+INV-1007,Sofia Martins,Riverstone Ceramics,2026-03-25,Product sheets,6,2100,12600,paid,TRUE,Demo data (fictional)
+INV-1008,Ben Carter,Hilltop Repair Co.,2026-03-28,Service brochure,1,15750,15750,unpaid,FALSE,Demo data (fictional)

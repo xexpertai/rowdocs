@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>rowdocs: one document per row</title>
+<style>
+  :root { --ink:#1d2433; --muted:#5b6475; --line:#d9dee7; --bg:#f6f7fb; --card:#fff; --accent:#2b5cd6;
+          --err:#b42318; --err-bg:#fdecea; --warn:#8a5a00; --warn-bg:#fff4d6; --ok:#1d7a46; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); }
+  header { padding:20px 24px 8px; max-width:1100px; margin:auto; }
+  header h1 { margin:0; font-size:24px; } header p { margin:4px 0 0; color:var(--muted); }
+  main { max-width:1100px; margin:auto; padding:12px 24px 40px; display:grid; gap:16px; grid-template-columns: 360px 1fr; align-items:start; }
+  @media (max-width: 860px) { main { grid-template-columns: 1fr; } }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px 18px; }
+  .card h2 { margin:0 0 10px; font-size:16px; }
+  label { display:block; font-weight:600; margin:12px 0 4px; font-size:14px; }
+  label.inline { display:flex; gap:8px; align-items:center; font-weight:500; margin:8px 0; }
+  input[type=text], input[type=file] { width:100%; padding:7px 8px; border:1px solid var(--line); border-radius:6px; font:inherit; background:#fff; }
+  .hint { color:var(--muted); font-size:13px; margin:2px 0 0; }
+  button { margin-top:14px; width:100%; padding:10px; border:0; border-radius:8px; font:inherit; font-weight:600; cursor:pointer; background:var(--accent); color:#fff; }
+  button.secondary { background:#e8ecf6; color:var(--ink); }
+  button:disabled { opacity:.5; cursor:not-allowed; }
+  .summary { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
+  .pill { padding:3px 10px; border-radius:999px; font-size:13px; font-weight:600; background:#eef1f7; }
+  .pill.err { background:var(--err-bg); color:var(--err); } .pill.warn { background:var(--warn-bg); color:var(--warn); }
+  .pill.ok { background:#e5f5ec; color:var(--ok); }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th, td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--muted); font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:.03em; }
+  tr.ERROR td { color:var(--err); background:var(--err-bg); } tr.WARN td { color:var(--warn); background:var(--warn-bg); }
+  code { font:13px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background:#eef1f7; padding:1px 5px; border-radius:4px; }
+  pre { white-space:pre-wrap; word-break:break-word; margin:0; font:13px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        background:#fbfbfd; border:1px solid var(--line); border-radius:8px; padding:12px; max-height:340px; overflow:auto; }
+  .stack { display:grid; gap:16px; min-width:0; }
+  .table-wrap { overflow-x:auto; }
+  #status { margin-top:10px; font-size:14px; min-height:1.4em; } #status.error { color:var(--err); }
+  .muted { color:var(--muted); } .hidden { display:none; }
+  footer { max-width:1100px; margin:auto; padding:0 24px 24px; color:var(--muted); font-size:13px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>rowdocs</h1>
+  <p>One Word or PDF document per spreadsheet row. Files stay on this computer.</p>
+</header>
+<main>
+  <section class="card" aria-labelledby="inputs-title">
+    <h2 id="inputs-title">1. Files and options</h2>
+    <form id="form">
+      <label for="data">Data (.xlsx or .csv)</label>
+      <input id="data" name="data" type="file" accept=".xlsx,.csv" required>
+      <label for="template">Word template (.docx)</label>
+      <input id="template" name="template" type="file" accept=".docx" required>
+      <label for="name">File-name pattern</label>
+      <input id="name" name="name" type="text" value="row_{{ _row }}" spellcheck="false">
+      <p class="hint">Jinja, e.g. <code>{{ invoice_no }}_{{ full_name }}</code></p>
+      <label for="sheet">Sheet (optional, .xlsx only)</label>
+      <input id="sheet" name="sheet" type="text" placeholder="first sheet">
+      <label class="inline"><input id="pdf" name="pdf" type="checkbox" value="1"> PDF for each document</label>
+      <label class="inline"><input id="merge_pdf" name="merge_pdf" type="checkbox" value="1"> Merged ALL.pdf</label>
+      <p id="pdf-hint" class="hint hidden">PDF needs LibreOffice, which is not installed.</p>
+      <button type="button" id="check-btn" class="secondary">Check</button>
+      <button type="submit" id="generate-btn" disabled>Generate ZIP</button>
+      <div id="status" role="status" aria-live="polite"></div>
+    </form>
+  </section>
+  <div class="stack">
+    <section class="card" aria-labelledby="result-title">
+      <h2 id="result-title">2. Validation</h2>
+      <div id="result"><p class="muted">Choose a data file and a template to check them.</p></div>
+    </section>
+    <section class="card" aria-labelledby="mapping-title">
+      <h2 id="mapping-title">Columns and placeholders</h2>
+      <div id="mapping" class="table-wrap"><p class="muted">Nothing checked yet.</p></div>
+    </section>
+    <section class="card" aria-labelledby="preview-title">
+      <h2 id="preview-title">3. Preview</h2>
+      <div id="preview"><p class="muted">The first selected row appears here as plain text.</p></div>
+    </section>
+  </div>
+</main>
+<footer>rowdocs runs locally on 127.0.0.1. Uploads are limited to 20 MB and deleted after each request.</footer>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const form = $("form"), status = $("status");
+  let lastOk = false;
+
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
+    ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
+  const setStatus = (text, isError = false) => { status.textContent = text; status.className = isError ? "error" : ""; };
+  const ready = () => $("data").files.length && $("template").files.length;
+  const formData = () => new FormData(form);
+
+  async function errorText(res) {
+    try { const body = await res.json(); return body.error || res.statusText; } catch { return res.statusText; }
+  }
+
+  function renderReport(report) {
+    const pills = [
+      `<span class="pill">${report.rows_selected.length} of ${report.rows_total} rows</span>`,
+      `<span class="pill ${report.errors ? "err" : "ok"}">${report.errors} error(s)</span>`,
+      `<span class="pill ${report.warnings ? "warn" : "ok"}">${report.warnings} warning(s)</span>`,
+    ].join("");
+    const rows = report.issues
+      .slice().sort((a, b) => (a.level === "ERROR" ? 0 : 1) - (b.level === "ERROR" ? 0 : 1))
+      .map((i) => `<tr class="${esc(i.level)}"><td>${esc(i.level)}</td><td>${esc(i.message)}</td></tr>`).join("");
+    $("result").innerHTML = `<div class="summary">${pills}</div>` + (rows
+      ? `<div class="table-wrap"><table><thead><tr><th>Level</th><th>Message</th></tr></thead><tbody>${rows}</tbody></table></div>`
+      : `<p>No problems found.</p>`);
+
+    const colRows = report.columns.map((c) =>
+      `<tr><td>${esc(c.header)}</td><td><code>${esc(c.key)}</code></td><td>${c.used ? "used" : "<span class='muted'>unused</span>"}</td></tr>`).join("");
+    const varRows = Object.entries(report.variables).map(([name, where]) => {
+      const known = name === "_row" || report.columns.some((c) => c.key === name);
+      return `<tr class="${known ? "" : "ERROR"}"><td><code>${esc(name)}</code></td><td>${esc(where.join(", "))}</td><td>${known ? "matched" : "no column"}</td></tr>`;
+    }).join("");
+    $("mapping").innerHTML =
+      `<table><thead><tr><th>Column</th><th>Key</th><th>Status</th></tr></thead><tbody>${colRows}</tbody></table>` +
+      `<br><table><thead><tr><th>Placeholder</th><th>Used in</th><th>Status</th></tr></thead><tbody>${varRows}</tbody></table>`;
+  }
+
+  function renderPreview(preview) {
+    if (preview.error) { $("preview").innerHTML = `<p class="muted">Row ${esc(preview.row)} could not be rendered:</p><pre>${esc(preview.error)}</pre>`; return; }
+    if (preview.row === null) { $("preview").innerHTML = `<p class="muted">No rows selected.</p>`; return; }
+    $("preview").innerHTML = `<p class="muted">Row ${esc(preview.row)}, as text:</p><pre>${esc(preview.text)}</pre>`;
+  }
+
+  async function runCheck() {
+    if (!ready()) { setStatus("Choose both files first.", true); return; }
+    setStatus("Checking…");
+    $("generate-btn").disabled = true;
+    const res = await fetch("/api/check", { method: "POST", body: formData() });
+    if (!res.ok) { lastOk = false; setStatus(await errorText(res), true); return; }
+    const body = await res.json();
+    renderReport(body.report); renderPreview(body.preview);
+    lastOk = body.report.ok;
+    $("generate-btn").disabled = !lastOk;
+    setStatus(lastOk ? "Ready to generate." : "Fix the errors before generating.", !lastOk);
+  }
+
+  async function generate(event) {
+    event.preventDefault();
+    if (!lastOk) return;
+    setStatus("Generating…");
+    $("generate-btn").disabled = true;
+    try {
+      const res = await fetch("/api/generate", { method: "POST", body: formData() });
+      if (!res.ok) { setStatus(await errorText(res), true); return; }
+      const blob = await res.blob();
+      const link = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: "rowdocs-output.zip" });
+      document.body.appendChild(link); link.click(); link.remove();
+      setTimeout(() => URL.revokeObjectURL(link.href), 5000);
+      setStatus("Downloaded rowdocs-output.zip.");
+    } finally { $("generate-btn").disabled = !lastOk; }
+  }
+
+  ["data", "template"].forEach((id) => $(id).addEventListener("change", () => { if (ready()) runCheck(); }));
+  ["name", "sheet"].forEach((id) => $(id).addEventListener("change", () => { if (ready()) runCheck(); }));
+  $("check-btn").addEventListener("click", runCheck);
+  form.addEventListener("submit", generate);
+
+  fetch("/api/info").then((r) => r.json()).then((info) => {
+    if (!info.pdf_available) { $("pdf").disabled = $("merge_pdf").disabled = true; $("pdf-hint").classList.remove("hidden"); }
+  }).catch(() => {});
+})();
+</script>
+</body>
+</html>

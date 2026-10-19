@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rowdocs"
+version = "0.1.0"
+description = "One Word (and PDF) document per spreadsheet row, with pre-flight checks. CLI + local web page."
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.11"
+authors = [{ name = "Harsha Shinde" }]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Environment :: Console",
+    "Topic :: Office/Business",
+]
+dependencies = [
+    "openpyxl>=3.1",
+    "docxtpl>=0.18",
+    "pypdf>=4",
+    "Flask>=3.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.5"]
+
+[project.scripts]
+rowdocs = "rowdocs.cli:main"
+
+[tool.setuptools]
+packages = ["rowdocs"]
+
+[tool.setuptools.package-data]
+rowdocs = ["static/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM"]
+ignore = ["SIM108"]
